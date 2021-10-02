@@ -9,4 +9,4 @@ Blog post: [Corso VT-x](https://paminerva.blogspot.com/search/label/Corso%20VT-x
 * [HyperDbg](https://github.com/HyperDbg/HyperDbg) <br />
 * [gbhv](https://github.com/Gbps/gbhv) <br />
 * [SimpleVisor](https://github.com/ionescu007/SimpleVisor) <br />
-* [edk2](https://github.com/tianocore/edk2)
+* [EDK II](https://github.com/tianocore/edk2)
