@@ -14,11 +14,13 @@ BOOLEAN CpuIsVMXSupported()
 	if (!_bittest((PLONG)&data.ecx, 5))   //if ((data.ecx & (1 << 5)) == 0)
 		return FALSE;
 
-	// Usa intrinsics __readmsr, che prende indirizzo del MSR da leggere
+	// Usa intrinsics __readmsr per leggere MSR IA32_FEATURE_CONTROL
 	IA32_FEATURE_CONTROL_MSR Control = { 0 };
 	Control.Uint64 = __readmsr(MSR_IA32_FEATURE_CONTROL);
 
-	// Controlla bit 2 di IA32_FEATURE_CONTROL
+	// Controlla bit 2 di IA32_FEATURE_CONTROL.
+	// Se non è impostato ad 1 vuol dire che la virtualizzazione
+	// è disabilitata dal BIOS e bisogna attivarla.
 	if (Control.Bits.EnableVmxOutsideSmx == FALSE)
 	{
 		DbgPrint("Please enable Virtualization from BIOS");

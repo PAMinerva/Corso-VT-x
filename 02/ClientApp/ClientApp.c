@@ -56,7 +56,11 @@ int main()
 		return 0;
 	}
 
-	HANDLE hDevice = CreateFile(L"\\\\.\\MyHypervisorDevice", GENERIC_READ | GENERIC_WRITE, 0, NULL, OPEN_EXISTING, 0, NULL);
+	HANDLE hDevice = CreateFile(
+		L"\\\\.\\MyHypervisorDevice", 
+		GENERIC_READ | GENERIC_WRITE, 
+		0, NULL, OPEN_EXISTING, 0, NULL);
+
 	if (hDevice == INVALID_HANDLE_VALUE)
 	{
 		return Error("Failed to open device");
