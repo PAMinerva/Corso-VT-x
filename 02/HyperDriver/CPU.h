@@ -1,5 +1,4 @@
 #pragma once
-#include <ntddk.h>
 
 // Registri utili in istruzione CPUID quando EAX == 0 o EAX == 1
 typedef struct _CPUID_EAX_01
@@ -13,7 +12,7 @@ typedef struct _CPUID_EAX_01
 // Control Register 0 (CR0).
 typedef union {
     struct {
-        UINT32  PE : 1;           ///< Protection Enable.
+        UINT64  PE : 1;           ///< Protection Enable.
         UINT32  MP : 1;           ///< Monitor Coprocessor.
         UINT32  EM : 1;           ///< Emulation.
         UINT32  TS : 1;           ///< Task Switched.

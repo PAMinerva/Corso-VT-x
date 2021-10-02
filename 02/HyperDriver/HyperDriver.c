@@ -1,3 +1,4 @@
+#include <ntddk.h>
 #include "CPU.h"
 
 NTSTATUS DriverCreate(PDEVICE_OBJECT DeviceObject, PIRP Irp)

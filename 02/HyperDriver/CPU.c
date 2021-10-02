@@ -1,3 +1,4 @@
+#include <ntddk.h>
 #include "CPU.h"
 #include "MSR.h"
 
