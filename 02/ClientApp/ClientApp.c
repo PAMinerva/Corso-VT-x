@@ -69,5 +69,7 @@ int main()
 	printf("Press Enter to exit\n\n");
 	getchar();
 
+	CloseHandle(hDevice);
+
 	return 0;
 }
