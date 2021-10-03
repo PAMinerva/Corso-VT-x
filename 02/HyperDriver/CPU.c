@@ -6,7 +6,7 @@ BOOLEAN CpuIsVMXSupported()
 {
 	CPUID_EAX_01 data = { 0 };
 
-	// Check VMX bit
+	// Check VMX bit (il quinti bit in ecx)
 	// La struct CPUID_EAX_1 definita con 4 campi interi contigui 
 	// quindi può essere trattata come fosse un array.
 	__cpuid((PINT32)&data, 1);
