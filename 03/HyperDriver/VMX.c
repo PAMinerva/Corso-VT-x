@@ -47,7 +47,7 @@ VOID VmxInitializeAffinity()
 		// Eleva IRQL a DISPATCH_LEVEL per impedire context switch
 		OldIrql = KeRaiseIrqlToDpcLevel();
 
-		// Esegui su ogni processore logico.
+		// Esegue su ogni processore logico.
 		CpuFixBits();
 
 		// Ristabilisce IRQL e maschera.
