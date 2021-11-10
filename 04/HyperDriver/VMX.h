@@ -1,6 +1,9 @@
 #pragma once
 
+// Inizializza VMX, VMCS e lancia il guest
 BOOLEAN VmxInitialize(UINT64 LogicalProcessors, ULONG ProcessorIndex);
+
+// Libera tutte le risorse allocate per la virtualizzazione.
 VOID VmxTerminate(UINT64 LogicalProcessors, ULONG ProcessorIndex);
 
 extern VOID AsmVMExitHandler();

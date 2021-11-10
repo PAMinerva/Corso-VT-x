@@ -5,7 +5,7 @@ NTSTATUS DriverCreate(PDEVICE_OBJECT DeviceObject, PIRP Irp)
 {
 	UNREFERENCED_PARAMETER(DeviceObject);
 
-	if (CpuIsVMXSupported())
+	if (CpuIsVmxSupported())
 	{
 		// CpuEnableVMX(); // inutile farlo in modo isolato
 		CpuFixBits();

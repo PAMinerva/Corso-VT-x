@@ -25,7 +25,7 @@ typedef union {
         UINT32  LimitHigh : 4;    ///< Segment Limit 19..16
         UINT32  AVL : 1;          ///< Available for use by system software
         UINT32  L   : 1;          ///< 0 0
-        UINT32  Reserved_53 : 1;  ///< 0 0
+        UINT32  Reserved_54 : 1;  ///< 0 0
         UINT32  G : 1;            ///< Granularity
         UINT32  BaseHigh : 8;     ///< Base Address  31..24
         UINT32  BaseUpper : 32;   ///< Base Address  63..32
@@ -62,13 +62,4 @@ typedef struct
     UINT16 limit;
     UINT64 base_address;
 } PSEUDO_DESCRIPTOR64, *PPSEUDO_DESCRIPTOR64;
-#pragma pack(pop)
-
-
-#pragma pack(push, 1)
-typedef struct
-{
-    UINT16 limit;
-    UINT32 base_address;
-} PSEUDO_DESCRIPTOR32, *PPSEUDO_DESCRIPTOR32;
 #pragma pack(pop)

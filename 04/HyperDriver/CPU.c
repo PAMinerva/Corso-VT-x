@@ -2,7 +2,7 @@
 #include "CPU.h"
 #include "MSR.h"
 
-BOOLEAN CpuIsVMXSupported()
+BOOLEAN CpuIsVmxSupported()
 {
 	CPUID_EAX_01 data = { 0 };
 
@@ -30,15 +30,18 @@ BOOLEAN CpuIsVMXSupported()
 	return TRUE;
 }
 
-VOID CpuEnableVMX()
+VOID CpuVmxEnable(BOOLEAN enable)
 {
 	CR4 Register;
 
 	// Recupera registro CR4
 	Register.Uint64 = __readcr4();
 
-	// Cambia ad 1 il bit 13 (VMX Enable)
-	Register.Bits.VMXE = 1;
+	// Imposta il bit 13 (VMX Enable)
+	if (enable)
+		Register.Bits.VMXE = 1;
+	else
+		Register.Bits.VMXE = 0;
 
 	// Scrive il nuovo valore nel registro CR4
 	__writecr4(Register.Uint64);

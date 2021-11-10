@@ -2,7 +2,7 @@
 #include "CPU.h"
 #include "MSR.h"
 
-BOOLEAN CpuIsVMXSupported()
+BOOLEAN CpuIsVmxSupported()
 {
 	CPUID_EAX_01 data = { 0 };
 

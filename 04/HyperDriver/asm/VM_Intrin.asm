@@ -1,138 +1,85 @@
-.code _text                                                                                                                                                                            
+.CODE _TEXT                                                                                                                                                                          
 
-__read_ldtr proc
+; --------------------------------------------------
+
+__read_ldtr PROC
     sldt ax
     ret
-__read_ldtr endp
+__read_ldtr ENDP
 
-__read_tr proc
+; --------------------------------------------------
+
+__read_tr PROC
     str ax
     ret
-__read_tr endp
+__read_tr ENDP
 
-__read_cs proc
+; --------------------------------------------------
+
+__read_cs PROC
     mov ax, cs
     ret
-__read_cs endp
+__read_cs ENDP
 
-__read_ss proc
+; --------------------------------------------------
+
+__read_ss PROC
     mov ax, ss
     ret
-__read_ss endp
+__read_ss ENDP
 
-__read_ds proc
+; --------------------------------------------------
+
+__read_ds PROC
     mov ax, ds
     ret
-__read_ds endp
+__read_ds ENDP
 
-__read_es proc
+; --------------------------------------------------
+
+__read_es PROC
     mov ax, es              
     ret
-__read_es endp
+__read_es ENDP
 
-__read_fs proc
+; --------------------------------------------------
+
+__read_fs PROC
     mov ax, fs
     ret
-__read_fs endp
+__read_fs ENDP
 
-__read_gs proc
+; --------------------------------------------------
+
+__read_gs PROC
     mov ax, gs
     ret
-__read_gs endp
+__read_gs ENDP
 
-__sgdt proc
+; --------------------------------------------------
+
+__sgdt PROC
     sgdt qword ptr [rcx]
     ret
-__sgdt endp
+__sgdt ENDP
 
-__sidt proc
+; --------------------------------------------------
+
+__sidt PROC
     sidt qword ptr [rcx]
     ret
-__sidt endp
+__sidt ENDP
 
-__load_ar proc
+; --------------------------------------------------
+
+__load_ar PROC
     lar rax, rcx
     jz no_error
     xor rax, rax
 no_error:
     ret
-__load_ar endp
+__load_ar ENDP
 
-__vm_call proc
-    mov rax,0CDAEFAEDBBAEBEEFh
-    vmcall
-    ret
-__vm_call endp
+; --------------------------------------------------
 
-__vm_call_ex proc
-        mov  rax,0CDAEFAEDBBAEBEEFh ; Our vmcall indentitifer
-
-        sub rsp, 30h
-        mov qword ptr [rsp],       r10
-        mov qword ptr [rsp + 8h],  r11
-        mov qword ptr [rsp + 10h], r12
-        mov qword ptr [rsp + 18h], r13
-        mov qword ptr [rsp + 20h], r14
-        mov qword ptr [rsp + 28h], r15
-
-        mov r10, qword ptr [rsp + 58h]
-        mov r11, qword ptr [rsp + 60h]
-        mov r12, qword ptr [rsp + 68h]
-        mov r13, qword ptr [rsp + 70h]
-        mov r14, qword ptr [rsp + 78h]
-        mov r15, qword ptr [rsp + 80h]
-
-        vmcall
-        mov r10, qword ptr [rsp]
-        mov r11, qword ptr [rsp + 8h]
-        mov r12, qword ptr [rsp + 10h]
-        mov r13, qword ptr [rsp + 18h]
-        mov r14, qword ptr [rsp + 20h]
-        mov r15, qword ptr [rsp + 28h]
-        add rsp, 30h
-
-        ret
-__vm_call_ex endp
-
-__hyperv_vm_call proc
-    vmcall
-    ret
-__hyperv_vm_call endp
-
-__reload_gdtr PROC
-	push rcx
-	shl rdx, 48
-	push rdx
-	lgdt fword ptr [rsp+6]
-	pop rax
-	pop rax
-	ret
-__reload_gdtr ENDP
-
-
-__reload_idtr PROC
-	push rcx
-	shl	 rdx, 48
-	push rdx
-	lidt fword ptr [rsp+6]
-	pop	rax
-	pop	rax
-	ret
-__reload_idtr ENDP
-
-__invept PROC
-    invept rcx,oword ptr[rdx]
-    ret
-__invept ENDP
-
-__invvpid PROC
-    invvpid rcx,oword ptr[rdx]
-    ret
-__invvpid ENDP
-
-__writecr2 proc
-    mov cr2,rcx
-    ret
-__writecr2 endp
-
-end
+END

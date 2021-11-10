@@ -1,7 +1,6 @@
 #include <ntddk.h>
 #include "CPU.h"
 #include "VMX.h"
-#include "DPC.h"
 #include "Globals.h"
 #include "Memory.h"
 #include "VMCS.h"
@@ -77,8 +76,6 @@ NTSTATUS DriverEntry(_In_ PDRIVER_OBJECT DriverObject, _In_ PUNICODE_STRING Regi
 		return status;
 	}
 
-	KdPrint(("HypertDriver initialized successfully\n"));
-
 	// Lo scopo di questo esempio è quello di eseguire un HLT ed uscire dalla 
 	// VMX operation.
 	// Dato che non si è ancora virtualizzato l'intero sistema in uso, si può 
@@ -100,14 +97,22 @@ NTSTATUS DriverEntry(_In_ PDRIVER_OBJECT DriverObject, _In_ PUNICODE_STRING Regi
 	if (VmxInitialize(ProcessorCount, ProcessorIndex))
 	{
 		KdPrint(("[*] Hypervisor loaded successfully :)\n"));
+
 		KdPrint(("[*] Restoring old thread affinity.\n"));
 		KeRevertToUserGroupAffinityThread(&(vmState->OldAffinity));
+
+		KdPrint(("[*] Clearing CR4.VMXE bit.\n"));
+		CpuVmxEnable(FALSE);
 	}
 	else
 	{
 		KdPrint(("[*] Hypervisor was not loaded :("));
+
 		KdPrint(("[*] Restoring old thread affinity.\n"));
 		KeRevertToUserGroupAffinityThread(&(vmState->OldAffinity));
+
+		KdPrint(("[*] Clearing CR4.VMXE bit.\n"));
+		CpuVmxEnable(FALSE);
 	}
 
 	return STATUS_SUCCESS;

@@ -3,7 +3,7 @@
 #include "Memory.h"
 #include "MSR.h"
 
-// Alloca memoria per lo Stack dell'hypervisor durante VM Exit
+
 BOOLEAN AllocateVmmStack(UINT64 ProcessorID)
 {
 	vmState[ProcessorID].VMM_STACK = (UINT64)ExAllocatePoolWithTag(NonPagedPool, VMM_STACK_SIZE, POOLTAG);

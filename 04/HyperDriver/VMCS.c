@@ -8,57 +8,58 @@
 #include "asm\vm_intrin.h"
 #include "Memory.h"
 #include "VMCS.h"
+#include "NTApi.h"
 
 
-
-/// Fill the guest's selector data
-VOID FillGuestSelectorData(PVOID gdt_base, UINT32 segment_register, UINT16 selector)
+/// Carica i campi relativi alla segmentazione recuperandoli dal segment descriptor
+VOID FillGuestSegmentData(PVOID gdt_base, UINT32 segment_register, UINT16 selector)
 {
 	SEGMENT_ATTRIBUTES segment_access_rights;
 	PSEGMENT_DESCRIPTOR segment_descriptor;
 
-	// Se bit 2 è impostato ad 1 selector si riferisce a LDT
+	// Se il bit 2 del selector è impostato ad 1 significa che tale selector 
+	// si riferisce ad elementi all'interno della LDT (non ci interessa).
 	if (selector & 0x4)
 		return;
 
-	// Indice di segment descriptor si trova in bit 15:3 del selector e viene
-	// moltiplicato per 8 (i byte dei descriptor nella GDT) per calcolare
-	// il byte offset del descriptor a partire dalla GDT.
-	// Moltiplicare per 8 è equivalente a shiftare a sinistra di 3 posizioni
+	// L'indice del segment descriptor (all'interno della GDT) si trova in 
+	// bit 3-15 del selector e viene moltiplicato per 8 (i byte dei descriptor nella GDT) 
+	// per calcolare il byte offset del descriptor a partire dall'inizio della GDT.
+	// Moltiplicare per 8 equivale a shiftare a sinistra di 3 posizioni
 	// (cioè gli ultimi 3 bit saranno zero). Dato che negli ultimi 3 bit del
 	// selector c'è roba che non ci interessa si possono azzerare ed è come
 	// se avessimo moltiplicato per 8 (0x7 = 0111; ~0x7 = 1000).
 	segment_descriptor = (PSEGMENT_DESCRIPTOR)((PCHAR)gdt_base + (selector & ~0x7));
 
-	// Base del segmento si compone attraverso i bit 31:16 (low), 39:32 (mid) e 
-	// 63:56 (high) del segment descriptor.
+	// Base del segmento si compone attraverso i bit 16-31 (low), 32-39 (mid) e 
+	// 56-63 (high) del segment descriptor.
 	UINT64 segment_base = segment_descriptor->Bits.BaseLow | 
 		segment_descriptor->Bits.BaseMid << 16 | 
 		segment_descriptor->Bits.BaseHigh << 24;
 
-	// Limite del segmento si compone attraverso i bit 15:0 (low) e 
-	// 51:48 (high) del segment descriptor.
+	// Limite del segmento si compone attraverso i bit 0-15 (low) e 
+	// 48-51 (high) del segment descriptor.
 	UINT32 segment_limit = segment_descriptor->Bits.LimitLow | (segment_descriptor->Bits.LimitHigh << 16);
 
-	// __load_ar usa istruzione LAR per leggere e ritornare i bit 63:32
-	// del segment descriptor a cui si riferisce selector passato come argomento.
-	// Dato che LAR serve a ritornare gli attributi di accesso di un segmento, i 
-	// primi 8 bit (39:32) sono azzerati perché contengono la BaseMid, quindi è
-	// necessario shiftare.
+	// __load_ar usa l'istruzione LAR per leggere e ritornare i bit 32-63
+	// del segment descriptor a cui si riferisce il selector passato come argomento.
+	// LAR serve a ritornare gli attributi di accesso di un segmento, ma i 
+	// primi 8 bit (32-39) vengono azzerati perché contengono la BaseMid, che
+	// non fa parte degli attributi, quindi è necessario shiftare.
 	segment_access_rights.Uint32 = __load_ar(selector) >> 8;
 	segment_access_rights.Bits.Unusable = 0;
 	segment_access_rights.Bits.Reserved_17 = 0;
 
-	// Se bit relativo flag S è impostato a 0 allora si tratta di descriptor di sistema.
-	// In x64 tali descriptor sono di 16 byte e per comporre la base è necessario
-	// aggiungere anche i bit 95:64 (i bit 96:127 sono riservati) come 32 bit alti
-	// di un indirizzo a 64 bit.
-	// Dato che il contesto delle VM entry e delle VM exit sarà impostato per
-	// l'esecuzione in modalità x64, questo non crea problemi di compatibilità.
+	// Se il bit relativo al flag S è impostato a 0 allora si tratta di descriptor 
+	// di sistema. In sistemi a 64 bit tali descriptor sono di 16 byte e per 
+	// comporre la base del segmento è necessario aggiungere anche i bit 95:64 
+	// (i bit 96:127 sono riservati) come 32 bit alti di un indirizzo a 64 bit.
+	// Dato che questo codice è eseguito in modalità a 64 bit non c'è pericolo
+	// di incontrare un segment descriptor di sistema che sia di 8 byte.
 	if (segment_descriptor->Bits.S == FALSE)
 		segment_base = (segment_base & 0xFFFFFFFF) | (UINT64)segment_descriptor->Bits.BaseUpper << 32;
 
-	// Se bit della granularità è impostato ad 1 il limite del segmento
+	// Se il bit della granularità è impostato ad 1 il limite del segmento
 	// non è più inteso in byte ma in unità di 4 KB.
 	if (segment_descriptor->Bits.G == TRUE)
 		segment_limit = (segment_limit << 12) + 0xfff;
@@ -67,18 +68,19 @@ VOID FillGuestSelectorData(PVOID gdt_base, UINT32 segment_register, UINT16 selec
 	if (selector == 0)
 		segment_access_rights.Uint32 |= 0x10000;
 
-	// A campo GUEST_ES_SELECTOR seguono campi GUEST_CS_SELECTOR, GUEST_SS_SELECTOR, ecc.
-	// e la distanza tra il valore codificato di un campo e l'altro è di 2 unità.
-	// Stessa cosa per tutti gli altri campi GUEST_ES_XX.
-	// Quindi, per accedere a tutti questi campi è sufficiente usare un indice (in questo
-	// caso segment_register) da moltiplicare per 2 ed aggiungere il risultato a GUEST_ES_XX.
+	// Al valore codificato GUEST_ES_SELECTOR seguono GUEST_CS_SELECTOR, GUEST_SS_SELECTOR, ecc.
+	// e la distanza numerica tra loro è sempre di 2 unità. 
+	// Stessa cosa per tutti gli altri valori codificati GUEST_ES_XX.
+	// Quindi, per indicare tutti questi valori codificati è sufficiente usare un indice 
+	// (in questo caso segment_register) da moltiplicare per 2 ed aggiungere il risultato 
+	// a GUEST_ES_XX.
 	__vmx_vmwrite(GUEST_ES_SELECTOR + segment_register * 2, selector);
 	__vmx_vmwrite(GUEST_ES_LIMIT + segment_register * 2, segment_limit);
 	__vmx_vmwrite(GUEST_ES_BASE + segment_register * 2, segment_base);
 	__vmx_vmwrite(GUEST_ES_ACCESS_RIGHTS + segment_register * 2, segment_access_rights.Uint32);
 }
 
-void SetVmEntryCtls(PIA32_VMX_ENTRY_CONTROL_MSR entry_control)
+void SetVmEntryCtls(PVM_ENTRY_CONTROL entry_control)
 {
 	/**
 	* This control determines whether DR7 and the IA32_DEBUGCTL MSR are loaded on VM entry.
@@ -102,7 +104,7 @@ void SetVmEntryCtls(PIA32_VMX_ENTRY_CONTROL_MSR entry_control)
 	entry_control->Bits.ConcealVMXFromPT = TRUE;
 }
 
-void SetVmExitCtls(PIA32_VMX_EXIT_CONTROL_MSR exit_control)
+void SetVmExitCtls(PVM_EXIT_CONTROL exit_control)
 {
 	/**
 	* This control determines whether DR7 and the IA32_DEBUGCTL MSR are saved on VM exit.
@@ -136,7 +138,7 @@ void SetVmExitCtls(PIA32_VMX_EXIT_CONTROL_MSR exit_control)
 	exit_control->Bits.ConcealVMXFromPT = TRUE;
 }
 
-void SetPrimaryCtls(PIA32_VMX_PROCBASED_CTLS_MSR primary_controls)
+void SetPrimaryCtls(PPRIMARY_PROCBASED_CTLS primary_controls)
 {
 	/**
 	* This control determines whether MSR bitmaps are used to control execution of the RDMSR
@@ -145,7 +147,7 @@ void SetPrimaryCtls(PIA32_VMX_PROCBASED_CTLS_MSR primary_controls)
 	* MSR bitmaps are not used, all executions of the RDMSR and WRMSR instructions cause
 	* VM exits.
 	*/
-	primary_controls->Bits.UseMSRBitmaps = TRUE;
+	//primary_controls->Bits.UseMSRBitmaps = TRUE;
 
 	/**
 	* This control determines whether the secondary processor-based VM-execution controls are
@@ -160,7 +162,7 @@ void SetPrimaryCtls(PIA32_VMX_PROCBASED_CTLS_MSR primary_controls)
 	primary_controls->Bits.HLTExiting = TRUE;
 }
 
-void SetSecondaryCtls(PIA32_VMX_PROCBASED_CTLS2_MSR secondary_controls)
+void SetSecondaryCtls(PSECONDARY_PROCBASED_CTLS secondary_controls)
 {
 	/**
 	* If this control is 1, extended page tables (EPT) are enabled. See Section 28.2.
@@ -200,18 +202,33 @@ UINT64 GetSegmentBase(UINT16 selector, PUINT8 gdt_base)
 {
 	PSEGMENT_DESCRIPTOR segment_descriptor;
 
+	// Recupera segment descriptor dalla GDT.
+	// L'indice del segment descriptor si trova a partire dal bit 3 del selector
+	// e viene moltiplicato per 8 (la dimensione dei descriptor nella GDT) per
+	// calcolare il byte offset del descriptor a partire dalla base della GDT.
+	// Moltiplicare per 8 è equivalente a shiftare a sinistra di 3 posizioni
+	// (cioè gli ultimi 3 bit saranno zero). Dato che negli ultimi 3 bit del
+	// selector c'è roba che non ci interessa si possono azzerare ed è come
+	// se avessimo moltiplicato per 8 (0x7 = 0111; ~0x7 = 1000).
 	segment_descriptor = (PSEGMENT_DESCRIPTOR)(gdt_base + (selector & ~0x7));
 
+	// Calcola base del segmento.
+	// Base del segmento si compone attraverso i bit 16-31 (low), 32-39 (mid) e 
+	// 56-63 (high) del segment descriptor.
 	unsigned __int64 segment_base = segment_descriptor->Bits.BaseLow | 
 		segment_descriptor->Bits.BaseMid << 16 | segment_descriptor->Bits.BaseHigh << 24;
 
+	// Se il bit relativo al flag S è impostato a 0 allora si tratta di descriptor
+	//  di sistema. In x64 tali descriptor sono di 16 byte e per comporre la base 
+	// è necessario aggiungere anche i bit 64-95 (i bit 96-127 sono riservati) 
+	// come 32 bit alti di un indirizzo a 64 bit.
 	if (segment_descriptor->Bits.S == FALSE)
 		segment_base = (segment_base & 0xFFFFFFFF) | (UINT64)segment_descriptor->Bits.BaseUpper << 32;
 
 	return segment_base;
 }
 
-UINT32 ajdust_controls(UINT32 ctl, UINT32 msr)
+UINT32 AdjustControls(UINT32 ctl, UINT32 msr)
 {
 	MSR msr_value = { 0 };
 	msr_value.Uint64 = __readmsr(msr);
@@ -220,72 +237,57 @@ UINT32 ajdust_controls(UINT32 ctl, UINT32 msr)
 	return ctl;
 }
 
-
 VOID SetupVmcs(PVCPU vms, UINT64 guestRIP)
 {
 	// Istruzioni SGDT e SIDT restituiscono i registri GDTR e IDTR.
-	// Questi non sono registri "normali" ma vengono definiti
-	// dalla documentazione come pseudo descriptor che indicano
-	// indirizzo e limite della GDT e della IDT.
-	PSEUDO_DESCRIPTOR64 gdtr = {0};
+	// In realtà restituiscono pseudo descriptor che indicano
+	// indirizzo di base e limite della GDT e della IDT.
+	PSEUDO_DESCRIPTOR64 gdtr = { 0 };
 	PSEUDO_DESCRIPTOR64 idtr = { 0 };
 
-	// In host area i selector devono avere ultimi 3 bit azzerati
+	// I selector dell'host devono avere gli ultimi 3 bit azzerati
 	UINT8 selector_mask = 7;
 
-	// Bitmap di eccezioni sincrone.
-	EXCEPTION_BITMAP exception_bitmap = {0};
+	// Campi di controllo della VMCS
+	PINBASED_CTLS pinbased_controls = { 0 };
+	PRIMARY_PROCBASED_CTLS primary_controls = { 0 };
+	SECONDARY_PROCBASED_CTLS secondary_controls = { 0 };
+	VM_EXIT_CONTROL exit_controls = { 0 };
+	VM_ENTRY_CONTROL entry_controls = { 0 };
 
-	// MSR relativi ad aree di controllo
-	IA32_VMX_ENTRY_CONTROL_MSR entry_controls = { 0 };
-	IA32_VMX_EXIT_CONTROL_MSR exit_controls = { 0 };
-	IA32_VMX_PINBASED_CTLS_MSR pinbased_controls = { 0 };
-	IA32_VMX_PROCBASED_CTLS_MSR primary_controls = {0};
-	IA32_VMX_PROCBASED_CTLS2_MSR secondary_controls = { 0 };
 
-	// Imposta bit relativi a campi specifici in aree di controllo.
-	SetVmEntryCtls(&entry_controls);
-	SetVmExitCtls(&exit_controls);
+	// Imposta bit specifici nei campi di controllo.
 	SetPrimaryCtls(&primary_controls);
 	SetSecondaryCtls(&secondary_controls);
+	SetVmExitCtls(&exit_controls);
+	SetVmEntryCtls(&entry_controls);
 
 
 	// Legge MSR IA32_VMX_BASIC
 	IA32_VMX_BASIC_MSR vmx_basic = { 0 };
 	vmx_basic.Uint64 = __readmsr(MSR_IA32_VMX_BASIC);
 
-	// Imposta aree di controllo
-	__vmx_vmwrite(CONTROL_PIN_BASED_VM_EXECUTION_CONTROLS, ajdust_controls(pinbased_controls.Uint32, vmx_basic.Bits.VmxTrueControls ? MSR_IA32_VMX_TRUE_PINBASED_CTLS : MSR_IA32_VMX_PINBASED_CTLS));
-	__vmx_vmwrite(CONTROL_PRIMARY_PROCESSOR_BASED_VM_EXECUTION_CONTROLS, ajdust_controls(primary_controls.Uint32, vmx_basic.Bits.VmxTrueControls ? MSR_IA32_VMX_TRUE_PROCBASED_CTLS : MSR_IA32_VMX_PROCBASED_CTLS));
-	__vmx_vmwrite(CONTROL_SECONDARY_PROCESSOR_BASED_VM_EXECUTION_CONTROLS, ajdust_controls(secondary_controls.Uint32, MSR_IA32_VMX_PROCBASED_CTLS2));
-	__vmx_vmwrite(CONTROL_VM_EXIT_CONTROLS, ajdust_controls(exit_controls.Uint32, vmx_basic.Bits.VmxTrueControls ? MSR_IA32_VMX_TRUE_EXIT_CTLS : MSR_IA32_VMX_EXIT_CTLS));
-	__vmx_vmwrite(CONTROL_VM_ENTRY_CONTROLS, ajdust_controls(entry_controls.Uint32, vmx_basic.Bits.VmxTrueControls ? MSR_IA32_VMX_TRUE_ENTRY_CTLS : MSR_IA32_VMX_ENTRY_CTLS));
-
 
 	// Legge GDTR e IDTR
 	__sgdt(&gdtr);
 	__sidt(&idtr);
 
-	// GDT ed IDT (base e limit)
-	__vmx_vmwrite(GUEST_GDTR_LIMIT, gdtr.limit);
-	__vmx_vmwrite(GUEST_IDTR_LIMIT, idtr.limit);
-	__vmx_vmwrite(GUEST_GDTR_BASE, gdtr.base_address);
-	__vmx_vmwrite(GUEST_IDTR_BASE, idtr.base_address);
-	__vmx_vmwrite(HOST_GDTR_BASE, gdtr.base_address);
-	__vmx_vmwrite(HOST_IDTR_BASE, idtr.base_address);
 
 
-	// Segmentazione
-	FillGuestSelectorData((PVOID)gdtr.base_address, ES, __read_es());
-	FillGuestSelectorData((PVOID)gdtr.base_address, CS, __read_cs());
-	FillGuestSelectorData((PVOID)gdtr.base_address, SS, __read_ss());
-	FillGuestSelectorData((PVOID)gdtr.base_address, DS, __read_ds());
-	FillGuestSelectorData((PVOID)gdtr.base_address, FS, __read_fs());
-	FillGuestSelectorData((PVOID)gdtr.base_address, GS, __read_gs());
-	FillGuestSelectorData((PVOID)gdtr.base_address, LDTR, __read_ldtr());
-	FillGuestSelectorData((PVOID)gdtr.base_address, TR, __read_tr());
-	__vmx_vmwrite(GUEST_FS_BASE, __readmsr(MSR_IA32_FS_BASE));
-	__vmx_vmwrite(GUEST_GS_BASE, __readmsr(MSR_IA32_GS_BASE));
+	//
+	// Host Area
+	//
+
+	// Registri di controllo
+	__vmx_vmwrite(HOST_CR0, __readcr0());
+	__vmx_vmwrite(HOST_CR3, FindSystemDirectoryTableBase());
+	__vmx_vmwrite(HOST_CR4, __readcr4());
+
+	// Registri general purpose (RSP e RIP)
+	__vmx_vmwrite(HOST_RSP, vms->VMM_STACK + VMM_STACK_SIZE - 16);
+	__vmx_vmwrite(HOST_RIP, (UINT64)AsmVMExitHandler);
+
+	// Selettori dei registri di segmento
 	__vmx_vmwrite(HOST_CS_SELECTOR, __read_cs() & ~selector_mask);
 	__vmx_vmwrite(HOST_SS_SELECTOR, __read_ss() & ~selector_mask);
 	__vmx_vmwrite(HOST_DS_SELECTOR, __read_ds() & ~selector_mask);
@@ -293,57 +295,86 @@ VOID SetupVmcs(PVCPU vms, UINT64 guestRIP)
 	__vmx_vmwrite(HOST_FS_SELECTOR, __read_fs() & ~selector_mask);
 	__vmx_vmwrite(HOST_GS_SELECTOR, __read_gs() & ~selector_mask);
 	__vmx_vmwrite(HOST_TR_SELECTOR, __read_tr() & ~selector_mask);
+
+	// Campo Base che si trova nei registri GDTR, IDTR, TR, FS e GS
+	__vmx_vmwrite(HOST_GDTR_BASE, gdtr.base_address);
+	__vmx_vmwrite(HOST_IDTR_BASE, idtr.base_address);
 	__vmx_vmwrite(HOST_FS_BASE, __readmsr(MSR_IA32_FS_BASE));
 	__vmx_vmwrite(HOST_GS_BASE, __readmsr(MSR_IA32_GS_BASE));
 	__vmx_vmwrite(HOST_TR_BASE, GetSegmentBase(__read_tr(), (PUINT8)gdtr.base_address));
 
+	// MSR (SYSENTER/SYSEXIT)
+	__vmx_vmwrite(HOST_SYSENTER_CS, __readmsr(MSR_IA32_SYSENTER_CS));
+	__vmx_vmwrite(HOST_SYSENTER_ESP, __readmsr(MSR_IA32_SYSENTER_ESP));
+	__vmx_vmwrite(HOST_SYSENTER_EIP, __readmsr(MSR_IA32_SYSENTER_EIP));
+
+
+
+	//
+	// Guest Area
+	//
 
 	// Registri di controllo
 	__vmx_vmwrite(GUEST_CR0, __readcr0());
-	__vmx_vmwrite(HOST_CR0, __readcr0());
-	__vmx_vmwrite(CONTROL_CR0_READ_SHADOW, __readcr0());
-
 	__vmx_vmwrite(GUEST_CR3, __readcr3());
-	__vmx_vmwrite(HOST_CR3, __readcr3());
-	__vmx_vmwrite(CONTROL_CR3_TARGET_COUNT, 0);
-
 	__vmx_vmwrite(GUEST_CR4, __readcr4());
-	__vmx_vmwrite(HOST_CR4, __readcr4());
-	__vmx_vmwrite(CONTROL_CR4_READ_SHADOW, __readcr4() & ~0x2000);
-	__vmx_vmwrite(CONTROL_CR4_GUEST_HOST_MASK, 0x2000); // Virtual Machine Extensions Enable	
-
 
 	// Registro di debug
 	__vmx_vmwrite(GUEST_DR7, __readdr(7));
 
-
-	// RFLAGS
-	__vmx_vmwrite(GUEST_RFLAGS, __readeflags());
-
-
-	// RSP e RIP
+	// Registri general purpose (RSP e RIP) ed RFLAGS
 	__vmx_vmwrite(GUEST_RSP, (UINT64)0);
 	__vmx_vmwrite(GUEST_RIP, guestRIP);
-	__vmx_vmwrite(HOST_RSP, vms->VMM_STACK + VMM_STACK_SIZE - 1);
-	__vmx_vmwrite(HOST_RIP, (UINT64)AsmVMExitHandler);
+	__vmx_vmwrite(GUEST_RFLAGS, __readeflags());
 
+	// Registri di segmento
+	FillGuestSegmentData((PVOID)gdtr.base_address, ES, __read_es());
+	FillGuestSegmentData((PVOID)gdtr.base_address, CS, __read_cs());
+	FillGuestSegmentData((PVOID)gdtr.base_address, SS, __read_ss());
+	FillGuestSegmentData((PVOID)gdtr.base_address, DS, __read_ds());
+	FillGuestSegmentData((PVOID)gdtr.base_address, FS, __read_fs());
+	FillGuestSegmentData((PVOID)gdtr.base_address, GS, __read_gs());
+	FillGuestSegmentData((PVOID)gdtr.base_address, LDTR, __read_ldtr());
+	FillGuestSegmentData((PVOID)gdtr.base_address, TR, __read_tr());
 
-	// MSR del Guest
+	// GDTR ed IDTR (base e limit)
+	__vmx_vmwrite(GUEST_GDTR_BASE, gdtr.base_address);
+	__vmx_vmwrite(GUEST_GDTR_LIMIT, gdtr.limit);
+	__vmx_vmwrite(GUEST_IDTR_BASE, idtr.base_address);
+	__vmx_vmwrite(GUEST_IDTR_LIMIT, idtr.limit);
+
+	// MSR
 	__vmx_vmwrite(GUEST_DEBUG_CONTROL, __readmsr(MSR_IA32_DEBUGCTL));
 	__vmx_vmwrite(GUEST_SYSENTER_CS, __readmsr(MSR_IA32_SYSENTER_CS));
 	__vmx_vmwrite(GUEST_SYSENTER_ESP, __readmsr(MSR_IA32_SYSENTER_ESP));
 	__vmx_vmwrite(GUEST_SYSENTER_EIP, __readmsr(MSR_IA32_SYSENTER_EIP));
-	__vmx_vmwrite(GUEST_EFER, __readmsr(MSR_IA32_EFER));
 
-
-	// MSR dell'Host
-	__vmx_vmwrite(HOST_SYSENTER_CS, __readmsr(MSR_IA32_SYSENTER_CS));
-	__vmx_vmwrite(HOST_SYSENTER_ESP, __readmsr(MSR_IA32_SYSENTER_ESP));
-	__vmx_vmwrite(HOST_SYSENTER_EIP, __readmsr(MSR_IA32_SYSENTER_EIP));
-	__vmx_vmwrite(HOST_EFER, __readmsr(MSR_IA32_EFER));
-
-
-	// Varie
+	// VMCS Link Pointer
 	__vmx_vmwrite(GUEST_VMCS_LINK_POINTER, ~0ULL);
-	__vmx_vmwrite(CONTROL_EXCEPTION_BITMAP, exception_bitmap.Uint32);
+
+
+
+	//
+	// Campi di controllo
+	//
+
+	// VM-execution, VM-exit e VM-entry control
+	__vmx_vmwrite(CONTROL_PIN_BASED_VM_EXECUTION_CONTROLS,
+		AdjustControls(pinbased_controls.Uint32,
+			vmx_basic.Bits.VmxTrueControls ? MSR_IA32_VMX_TRUE_PINBASED_CTLS : MSR_IA32_VMX_PINBASED_CTLS));
+
+	__vmx_vmwrite(CONTROL_PRIMARY_PROCESSOR_BASED_VM_EXECUTION_CONTROLS,
+		AdjustControls(primary_controls.Uint32,
+			vmx_basic.Bits.VmxTrueControls ? MSR_IA32_VMX_TRUE_PROCBASED_CTLS : MSR_IA32_VMX_PROCBASED_CTLS));
+
+	__vmx_vmwrite(CONTROL_SECONDARY_PROCESSOR_BASED_VM_EXECUTION_CONTROLS,
+		AdjustControls(secondary_controls.Uint32, MSR_IA32_VMX_PROCBASED_CTLS2));
+
+	__vmx_vmwrite(CONTROL_VM_EXIT_CONTROLS,
+		AdjustControls(exit_controls.Uint32,
+			vmx_basic.Bits.VmxTrueControls ? MSR_IA32_VMX_TRUE_EXIT_CTLS : MSR_IA32_VMX_EXIT_CTLS));
+
+	__vmx_vmwrite(CONTROL_VM_ENTRY_CONTROLS,
+		AdjustControls(entry_controls.Uint32,
+			vmx_basic.Bits.VmxTrueControls ? MSR_IA32_VMX_TRUE_ENTRY_CTLS : MSR_IA32_VMX_ENTRY_CTLS));
 }

@@ -7,7 +7,7 @@ EXTERN g_BasePointerForReturning : QWORD
 EXTERN __security_check_cookie : PROC
 
 
-.code _text
+.CODE _TEXT
 
 ; ------------------------------------------------------------------------
 
@@ -38,7 +38,7 @@ mov rbp, g_BasePointerForReturning
 ; Return Address che punta all'istruzione successiva a call VmxInitialize in DriverCreate.
 
 ; Toglie gli 8 byte dell'RA a __vmx_vmlaunch in VmxInitialize dallo stack
-ADD rsp, 8
+add rsp, 8
 
 ; Simula il return TRUE
 xor rax, rax
@@ -74,4 +74,4 @@ AsmSaveVMXOFFState ENDP
 
 ; ------------------------------------------------------------------------
 
-end
+END

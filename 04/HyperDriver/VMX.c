@@ -2,7 +2,6 @@
 #include "VMX.h"
 #include "MSR.h"
 #include "CPU.h"
-#include "DPC.h"
 #include "Globals.h"
 #include "Memory.h"
 #include "VMCS.h"
@@ -47,7 +46,7 @@ BOOLEAN VmxLoadVmcs(PVCPU CurrentGuestState) {
 BOOLEAN VmxInitialize(UINT64 LogicalProcessors, ULONG ProcessorIndex)
 {
 	// Controlla se è possibile entrare in VMX Operation
-	if (!CpuIsVMXSupported())
+	if (!CpuIsVmxSupported())
 	{
 		KdPrint(("[*] VMX is not supported in this machine !"));
 		return FALSE;
@@ -107,7 +106,7 @@ BOOLEAN VmxInitialize(UINT64 LogicalProcessors, ULONG ProcessorIndex)
 
 		KdPrint(("[*] HOST stack is allocated at =================> %llx\n", vmState[i].VMM_STACK));
 
-		// Alloca memoria che conterrà codice del guest.
+		// Alloca memoria che conterrà il codice del guest.
 		// In questo caso si tratta di una semplice pagina che inizia con l'istruzione HLT.
 		vmState[i].GuestRipVA = (UINT64)ExAllocatePoolWithTag(NonPagedPool, PAGE_SIZE, POOLTAG);
 		if (vmState[i].GuestRipVA == (UINT64)NULL)

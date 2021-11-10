@@ -62,10 +62,11 @@ typedef union {
 } CR4, * PCR4;
 
 // Ritorna TRUE se per la CPU è possibile entrare in VMX Operation
-BOOLEAN CpuIsVMXSupported();
+BOOLEAN CpuIsVmxSupported();
 
-// Abilita la possibiltà di entrare in VMX Operation impostando il bit 13 di CR4
-VOID CpuEnableVMX();
+// Imposta il bit 13 nel registro CR4 (VMX Enable)
+// abilitando o meno la possibiltà di entrare in VMX Operation.
+VOID CpuVmxEnable(BOOLEAN enable);
 
 // Imposta bit di CR0 e CR4 a valori richiesti in VMX operation.
 VOID CpuFixBits();

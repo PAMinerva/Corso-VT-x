@@ -25,3 +25,15 @@ LOGICAL
 KeSignalCallDpcSynchronize(
 	_In_ PVOID SystemArgument2
 );
+
+typedef struct _NT_KPROCESS
+{
+	DISPATCHER_HEADER Header;
+	LIST_ENTRY ProfileListHead;
+	ULONG_PTR DirectoryTableBase;
+	UCHAR Data[1];
+}NT_KPROCESS, * PNT_KPROCESS;
+
+// Ritorna indirizzo di Directory Table per il processo System.
+// In altre parole è il valore di CR3 quando è in esecuzione System.
+UINT64 FindSystemDirectoryTableBase();

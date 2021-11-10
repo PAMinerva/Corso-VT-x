@@ -4,10 +4,7 @@ PUBLIC AsmVMExitHandler
 EXTERN VmxVMExitHandler : PROC
 
 
-
 .CODE _TEXT
-
-
 
 AsmVMExitHandler PROC
 

@@ -7,7 +7,7 @@ NTSTATUS DriverCreate(PDEVICE_OBJECT DeviceObject, PIRP Irp)
 {
 	UNREFERENCED_PARAMETER(DeviceObject);
 
-	if (CpuIsVMXSupported())
+	if (CpuIsVmxSupported())
 	{
 		//KeGenericCallDpc(VmxInitializeDpc, 0x0);
 		VmxInitializeAffinity();

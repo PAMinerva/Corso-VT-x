@@ -144,11 +144,11 @@
   <ItemGroup>
     <ClInclude Include="asm\VM_Intrin.h" />
     <ClInclude Include="CPU.h" />
-    <ClInclude Include="DPC.h" />
     <ClInclude Include="Event.h" />
     <ClInclude Include="Globals.h" />
     <ClInclude Include="Memory.h" />
     <ClInclude Include="MSR.h" />
+    <ClInclude Include="NTApi.h" />
     <ClInclude Include="Segment.h" />
     <ClInclude Include="VMCS.h" />
     <ClInclude Include="VMX.h" />
@@ -157,6 +157,7 @@
     <ClCompile Include="CPU.c" />
     <ClCompile Include="HyperDriver.c" />
     <ClCompile Include="Memory.c" />
+    <ClCompile Include="NTApi.c" />
     <ClCompile Include="VMCS.c" />
     <ClCompile Include="VMX.c" />
   </ItemGroup>
