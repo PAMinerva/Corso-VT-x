@@ -8,6 +8,10 @@ EXTERN VmxVMExitHandler : PROC
 
 AsmVMExitHandler PROC
 
+	; shadow space/storage (4 * 8 byte + altri 8 byte per 
+	; riallineare lo stack a 16 byte, disallineato a causa
+	; dell'iserimento implicito del return address sullo stack
+	; al momento della call). Totale 40 = 28h byte.
 	sub	rsp, 28h
 	call	VmxVMExitHandler
 	add	rsp, 28h	
