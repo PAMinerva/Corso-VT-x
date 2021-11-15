@@ -41,7 +41,6 @@ BOOLEAN VmxLoadVmcs(PVCPU CurrentGuestState) {
 	return TRUE;
 }
 
-
 // Inizializza VMX, VMCS e lancia il guest
 BOOLEAN VmxInitialize(UINT64 LogicalProcessors, ULONG ProcessorIndex)
 {
@@ -79,15 +78,18 @@ BOOLEAN VmxInitialize(UINT64 LogicalProcessors, ULONG ProcessorIndex)
 
 		KdPrint(("[*] VMX-Operation Enabled Successfully\n"));
 
-		// Ristabilisce maschera di affinità del thread..
+		// Salva vecchia maschera di affinità del thread.
 		KdPrint(("[*] Saving old thread affinity.\n"));
 		vmState[i].OldAffinity = OldAffinity;
 
+		// Alloca spazio per VMXON region
 		if (!AllocateVMCSRegion(&vmState[i], TRUE))
 		{
 			KdPrint(("[*] Error in allocating memory for Vmxon region"));
 			return FALSE;
 		}
+
+		// Alloca spazio per VMCS region
 		if (!AllocateVMCSRegion(&vmState[i], FALSE))
 		{
 			KdPrint(("[*] Error in allocating memory for Vmcs region"));
@@ -97,12 +99,9 @@ BOOLEAN VmxInitialize(UINT64 LogicalProcessors, ULONG ProcessorIndex)
 		KdPrint(("[*] VMCS Region is allocated at  ===============> %llx\n", vmState[i].VMCS_REGION_VA));
 		KdPrint(("[*] VMXON Region is allocated at ===============> %llx\n", vmState[i].VMXON_REGION_VA));
 
-		//Allocating VMM Stack
+		// Alloca spazio che verrà usato come stack dall'hypervisor durante le Vm exit
 		if (!AllocateVmmStack(i))
-		{
-			// Some error in allocating Vmm Stack
 			return FALSE;
-		}
 
 		KdPrint(("[*] HOST stack is allocated at =================> %llx\n", vmState[i].VMM_STACK));
 
@@ -128,6 +127,7 @@ BOOLEAN VmxInitialize(UINT64 LogicalProcessors, ULONG ProcessorIndex)
 			return FALSE;
 		}
 
+		// Inizializza la VMCS
 		KdPrint(("[*] Setting up VMCS.\n"));
 		SetupVmcs(&vmState[i], vmState[i].GuestRipVA);
 
@@ -138,17 +138,18 @@ BOOLEAN VmxInitialize(UINT64 LogicalProcessors, ULONG ProcessorIndex)
 		KdPrint(("\n=====================================================\n"));
 
 		// Dopo VMLAUNCH il controllo viene passato al guest.
-		// In questo caso il guest eseguirà HLT che causerà una VM exit, che verrà gestita
+		// In questo caso il guest eseguirà HLT che causerà una VM exit: questa verrà gestita
 		// semplicemente spegnendo tutto con VMXOFF. Cosa succede dopo?
 		// L'idea è quella di proseguire da qui, ed in particolare dal return TRUE
-		// finale che ritorna al codice chiamante VmxInitialize (DriverEntry in questo caso)
-		// per proseguire normalmente. 
+		// finale che ritorna al codice che ha invocato VmxInitialize (in questo caso
+		// DriverEntry) per proseguire normalmente. 
 		// Il problema è che return TRUE non verrà mai eseguita. Quindi? 
 		// Se si memorizzano i registri RSP ed RBP in questo punto è possibile ripristinarli 
 		// successivamente nel gestore della VM exit provocata dall'HLT. A quel punto
-		// si può manipolare lo stack e ricalcolare manualmente l'indirizzo di ritorno all'
-		// interno del chiamante di VmxInitialize. Per simulare il valore di ritorno, invece,
-		// è sufficiente impostare RAX ad 1 (si veda codice di AsmSaveVMXOFFState).
+		// si può manipolare lo stack e ricalcolare manualmente l'indirizzo di ritorno che punta
+		// all'istruzione successiva alla chiamata di VmxInitialize in DriverEntry.
+		// Per simulare il valore di ritorno, invece, è sufficiente impostare RAX ad 1 
+		// (si veda codice di AsmSaveVMXOFFState).
 		AsmSaveVMXOFFState();
 
 
@@ -158,10 +159,10 @@ BOOLEAN VmxInitialize(UINT64 LogicalProcessors, ULONG ProcessorIndex)
 		__vmx_vmlaunch();
 
 		//
-		// Se VMLAUNCH viene eseguita con successo non si arriverà mai qui !!!
+		// Se VMLAUNCH viene eseguita con successo non si arriverà mai qui...
 		//
 
-		// In caso contrario legge l'errore ed esegue VMXOFF.
+		// ... In caso contrario legge l'errore ed esegue VMXOFF.
 		ULONG64 ErrorCode = 0;
 		__vmx_vmread(VM_INSTRUCTION_ERROR, &ErrorCode);
 		__vmx_off();
@@ -195,7 +196,7 @@ VOID VmxVMExitHandler()
 
 			// DbgBreakPoint();
 
-			// Spegne tutto con VMXOFF e dirotta in DriverEntry.
+			// Spegne tutto con VMXOFF e dirotta l'esecuzione in DriverEntry.
 			AsmRestoreToVMXOFFState();
 
 			break;

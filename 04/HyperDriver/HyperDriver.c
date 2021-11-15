@@ -39,6 +39,8 @@ void DriverUnload(_In_ PDRIVER_OBJECT DriverObject)
 	UINT64 ProcessorCount = 1;
 	ULONG ProcessorIndex = KeGetCurrentProcessorIndex();
 	VmxTerminate(ProcessorCount, ProcessorIndex);
+
+	KdPrint(("[*] HyperDriver unloaded successfully.\n"));
 }
 
 NTSTATUS DriverEntry(_In_ PDRIVER_OBJECT DriverObject, _In_ PUNICODE_STRING RegistryPath)
@@ -76,10 +78,10 @@ NTSTATUS DriverEntry(_In_ PDRIVER_OBJECT DriverObject, _In_ PUNICODE_STRING Regi
 		return status;
 	}
 
-	// Lo scopo di questo esempio è quello di eseguire un HLT ed uscire dalla 
-	// VMX operation.
-	// Dato che non si è ancora virtualizzato l'intero sistema in uso, si può 
-	// usare un solo processore logico che, una volta uscito dalla VMX operation,
+	// Lo scopo di questo esempio è quello di uscire dalla VMX operation
+    // alla prima istruzione del guest, che sarà HLT.
+	// Dato che il guest non è ancora l'intero sistema in uso, si può usare
+	// un solo processore logico che, una volta uscito dalla VMX operation,
 	// può ritorna qui, per continuare ad eseguire il codice di DriveEntry.
 	// Se si volessero usare tutti i processori, cosa eseguirebbero questi una
 	// volta usciti dalla VMX operation se solo ad uno di essi è permesso di
@@ -93,7 +95,7 @@ NTSTATUS DriverEntry(_In_ PDRIVER_OBJECT DriverObject, _In_ PUNICODE_STRING Regi
 	vmState = ExAllocatePoolWithTag(NonPagedPool, sizeof(VCPU) * ProcessorCount, POOLTAG);
 	RtlZeroMemory(vmState, sizeof(VCPU) * ProcessorCount);
 
-
+	// Inizializza VMX, VMCS e lancia il guest
 	if (VmxInitialize(ProcessorCount, ProcessorIndex))
 	{
 		KdPrint(("[*] Hypervisor loaded successfully :)\n"));
