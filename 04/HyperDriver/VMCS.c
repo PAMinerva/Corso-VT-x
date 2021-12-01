@@ -348,6 +348,8 @@ VOID SetupVmcs(PVCPU vms, UINT64 guestRIP)
 	__vmx_vmwrite(GUEST_SYSENTER_CS, __readmsr(MSR_IA32_SYSENTER_CS));
 	__vmx_vmwrite(GUEST_SYSENTER_ESP, __readmsr(MSR_IA32_SYSENTER_ESP));
 	__vmx_vmwrite(GUEST_SYSENTER_EIP, __readmsr(MSR_IA32_SYSENTER_EIP));
+	__vmx_vmwrite(GUEST_FS_BASE, __readmsr(MSR_IA32_FS_BASE));
+	__vmx_vmwrite(GUEST_GS_BASE, __readmsr(MSR_IA32_GS_BASE));
 
 	// VMCS Link Pointer
 	__vmx_vmwrite(GUEST_VMCS_LINK_POINTER, ~0ULL);
