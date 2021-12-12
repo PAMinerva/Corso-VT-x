@@ -9,7 +9,6 @@ VOID VmxRootExitHandleMsrRead(PGUEST_REGS GuestRegs)
 {
 	MSR msr = { 0 };
 
-
 	// L'istruzione RDMSR causa VM exit se almeno una delle seguenti condizioni è vera:
 	// 
 	// Il bit "use MSR bitmaps" del primary processor-based è 0.
@@ -25,20 +24,20 @@ VOID VmxRootExitHandleMsrRead(PGUEST_REGS GuestRegs)
 	if ((GuestRegs->rcx <= 0x00001FFF) || ((0xC0000000 <= GuestRegs->rcx) && (GuestRegs->rcx <= 0xC0001FFF))
 		|| (GuestRegs->rcx >= RESERVED_MSR_RANGE_LOW && (GuestRegs->rcx <= RESERVED_MSR_RANGE_HI)))
 	{
-		// Esegue RDMSR in VMX root operation, azione che ripassa la palla a Hyper-V
-		// per la gestione di tale istruzione. Alla fine si ritorna qui in quanto dal
-		// punto di vista di Hyper-V il nostro hypervisor è solo un guest speciale:
-		// la nostra è una root operation fittizia ed eseguire RDMSR in tale modalità
-		// causa una VM exit che fa capire ad Hyper-V che non siamo interessati a
-		// gestirla e che se ne dovrebbe occupare lui. Dopo che Hyper-V ha gestito
-		// la VM exit esegue VMRESUME e si riprende da questo punto come se il nostro
-		// hypervisor fosse un normalissimo guest.
+		// Esegue RDMSR in VMX non-root operation (dal punto di vista del nostro hypervisor
+		// siamo in root operation perché Hyper-V ci passa tutte le VM exit ma in realtà 
+		// siamo in non-root operation), che causa una nuova VM exit che indica ad Hyper-V 
+		// che non eravamo interessati alla gestione della VM exit originaria, di non 
+		// ripassarcela più e di gestirsela per conto proprio.
+		// Alla fine si ritorna qui in quanto, dato che siamo in non-root operation, dopo 
+		// che Hyper-V ha gestito la VM exit ed eseguito VMRESUME, si riprende da questo 
+		// punto come se il nostro hypervisor fosse un normalissimo guest.
 		msr.Uint64 = __readmsr(GuestRegs->rcx);
 	}
 
-	// Salva il risultato della lettura dell'MSR nei registri del guest.
-	// RDMSR prende da ECX l'indirizzo dell'MSR da leggere e mette il 
-	// risultato in EAX:EDX.
+	// Salva il risultato della lettura dell'MSR nella zona di memoria dove sono stati
+	// salvati i registri del guest.
+	// RDMSR prende da ECX l'indirizzo dell'MSR da leggere e mette il risultato in EAX:EDX.
 	GuestRegs->rax = msr.Low;
 	GuestRegs->rdx = msr.High;
 }
@@ -63,14 +62,14 @@ VOID VmxRootExitHandleMsrWrite(PGUEST_REGS GuestRegs)
 		msr.Low = (ULONG)GuestRegs->rax;
 		msr.High = (ULONG)GuestRegs->rdx;
 
-		// Esegue WRMSR in VMX root operation, azione che ripassa la palla a Hyper-V
-		// per la gestione di tale istruzione. Alla fine si ritorna qui in quanto dal
-		// punto di vista di Hyper-V il nostro hypervisor è solo un guest speciale:
-		// la nostra è una root operation fittizia ed eseguire WRMSR in tale modalità
-		// causa una VM exit che fa capire ad Hyper-V che non siamo interessati a
-		// gestirla e che se ne dovrebbe occupare lui. Dopo che Hyper-V ha gestito
-		// la VM exit esegue VMRESUME e si riprende da questo punto come se il nostro
-		// hypervisor fosse un normalissimo guest.
+		// Esegue WRMSR in VMX non-root operation (dal punto di vista del nostro hypervisor
+		// siamo in root operation perché Hyper-V ci passa tutte le VM exit ma in realtà 
+		// siamo in non-root operation), che causa una nuova VM exit che indica ad Hyper-V 
+		// che non eravamo interessati alla gestione della VM exit originaria, di non 
+		// ripassarcela più e di gestirsela per conto proprio.
+		// Alla fine si ritorna qui in quanto, dato che siamo in non-root operation, dopo 
+		// che Hyper-V ha gestito la VM exit ed eseguito VMRESUME, si riprende da questo 
+		// punto come se il nostro hypervisor fosse un normalissimo guest.
 		__writemsr(GuestRegs->rcx, msr.Uint64);
 	}
 }
@@ -80,10 +79,15 @@ VOID VmxRootExitHandleCpuid(PGUEST_REGS RegistersState)
 {
 	INT32 cpu_info[4];
 
-
-	// Ripassa la palla ad Hyper-V eseguendo CPUIDEX nella root operation fittizia,
-	// che causa una nuova VM exit che indica ad Hyper-V che non eravamo interessati
-	// alla gestione della VM exit originaria.
+	// Ripassa la palla ad Hyper-V eseguendo CPUIDEX in non-root operation (dal 
+	// punto di vista del nostro hypervisor siamo in root operation perché Hyper-V 
+	// ci passa tutte le VM exit ma in realtà siamo in non-root operation), che
+	// causa una nuova VM exit che indica ad Hyper-V che non eravamo interessati
+	// alla gestione della VM exit originaria, di non ripassarcela più e di
+	// gestirsela per conto proprio.
+	// Alla fine si ritorna qui in quanto, dato che siamo in non-root operation, dopo 
+	// che Hyper-V ha gestito la VM exit ed eseguito VMRESUME, si riprende da questo 
+	// punto come se il nostro hypervisor fosse un normalissimo guest.
 	__cpuidex(cpu_info, (INT32)RegistersState->rax, (INT32)RegistersState->rcx);
 
 
@@ -96,19 +100,19 @@ VOID VmxRootExitHandleCpuid(PGUEST_REGS RegistersState)
 		// a del codice guest che è interessato a sapere tale informazione.
 		// Dato che siamo in effetti su un sistema virtualizzato e che il nostro
 		// hypervisor è quello a cui Hyper-V passa tutte le VM exit è bene
-		// impostare tale bit per confermare al guest la presenza dell'hypervisor.
+		// impostare tale bit per confermare al guest la nostra presenza come hypervisor.
 		cpu_info[2] |= 0x80000000;
 	}
 	else if (RegistersState->rax == 0x40000000)
 	{
 		// I valori nell'intervallo [0x40000000, 0x4FFFFFFF] non vengono normalmente
-		// accettati come input validi da mettere in EAX e da passare a CPUID.
+		// accettati come input validi da mettere in EAX per eseguire CPUID.
 		// Intel però riserva i valori in [0x40000000, 0x400000FF] per fornire 
-		// ulteriori informazioni al guest sull'hypervisor che lo controlla.
+		// ulteriori informazioni al guest sull'hypervisor, se presente.
 		// Il valore 0x40000000 indica che il guest è interessato a sapere
 		// chi è l'hypervisor (Vendor ID signature) e qual'è il valore massimo 
 		// che accetta per EAX (nell'intervallo [0x40000001, 0x400000FF])
-		// quando deve essere usato come operatore nell'esecuzione di CPUID.
+		// quando usato come operatore nell'esecuzione di CPUID.
 		cpu_info[0] = 0x40000001;
 		cpu_info[1] = 'sroC';  // "Corso VT-x"
 		cpu_info[2] = 'TV o';
@@ -117,11 +121,10 @@ VOID VmxRootExitHandleCpuid(PGUEST_REGS RegistersState)
 	else if (RegistersState->rax == 0x40000001)
 	{
 		// Se il valore in RAX del guest è 0x40000001 significa che il guest 
-		// è interessato a sapere se l'hypervisor fornisce almeno il supporto 
-		// minimo richiesto da un hypervisor conforme al Microsoft Hypervisor 
-		// Interface.
+		// è interessato a sapere se l'hypervisor è conforme al Microsoft 
+		// Hypervisor Interface.
 		// In questo caso segnaliamo che il nostro hypervisor non è conforme
-		// (restituendo Hv#0 invece che Hv#1) perché siamo solo interessati
+		// (restituendo Hv#0 invece che Hv#1) perché siamo interessati solo
 		// alle richieste del guest quando queste vengono esclusivamente dal
 		// nostro driver eseguito in non-root operation e non da altre parti
 		// (in quel caso si ripassa semplicemente la palla ad Hyper-V).
@@ -129,12 +132,11 @@ VOID VmxRootExitHandleCpuid(PGUEST_REGS RegistersState)
 		cpu_info[1] = cpu_info[2] = cpu_info[3] = 0;
 	}
 
-	// Copia i valori nei registri del guest.
+	// Copia i valori nella zona di memoria dove sono salvati i registri del guest.
 	RegistersState->rax = cpu_info[0];
 	RegistersState->rbx = cpu_info[1];
 	RegistersState->rcx = cpu_info[2];
 	RegistersState->rdx = cpu_info[3];
-
 }
 
 
@@ -149,24 +151,24 @@ NTSTATUS VmxRootVmcallHandler(UINT64 VmcallNumber, UINT64 OptionalParam1, UINT64
 	switch (VmcallNumber & 0xffffffff)
 	{
 
-	case VMCALL_TEST:
-	{
-		VmcallStatus = VmxRootVmCallTest(OptionalParam1, OptionalParam2, OptionalParam3);
-		break;
-	}
+		case VMCALL_TEST:
+		{
+			VmcallStatus = VmxRootVmCallTest(OptionalParam1, OptionalParam2, OptionalParam3);
+			break;
+		}
 
-	case VMCALL_VMXOFF:
-	{
-		VmxRootVmxoff();
-		VmcallStatus = STATUS_SUCCESS;
-		break;
-	}
+		case VMCALL_VMXOFF:
+		{
+			VmxRootVmxoff();
+			VmcallStatus = STATUS_SUCCESS;
+			break;
+		}
 
-	default:
-	{
-		VmcallStatus = STATUS_UNSUCCESSFUL;
-		break;
-	}
+		default:
+		{
+			VmcallStatus = STATUS_UNSUCCESSFUL;
+			break;
+		}
 
 	}
 

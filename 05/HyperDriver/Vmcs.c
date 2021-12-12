@@ -431,9 +431,9 @@ VOID SetupVmcs(PVCPU CurrentGuestState, PVOID GuestStack)
 
 	// Per evitare di causare VM exit ogni volta che viene eseguita una RDMSR o una WRMSR
 	// è meglio impostare una bitmap con bit impostati ad 1 per i soli MSR per cui una
-	// VM exit è l'azione desiderata.
+	// VM exit è l'azione desiderata a seguito di un accesso in letture o scrittura.
 	if (primary_controls.Bits.UseMSRBitmaps == TRUE)
-		__vmx_vmwrite(CONTROL_MSR_BITMAPS_ADDRESS, GuestState->MSR_BITMAP_PA);
+		__vmx_vmwrite(CONTROL_MSR_BITMAPS_ADDRESS, CurrentGuestState->MSR_BITMAP_PA);
 
 
 	// Imposta la maschera di CR4 in modo che il bit 13 (VMXE) appartenga all'host

@@ -95,10 +95,11 @@ BOOLEAN CpuBroadcastRoutine(ULONG ProcessorIndex, PVOID Routine)
 	// ...Ritorna dopo AsmRestoreState
 
 	//
-	// Tutto il codice eseguito da questo momento in poi (anche quello
-	// al di fuori del driver corrente) è codice guest in VMX non-root
-	// operation. In altre parole, l'intero sistema operativo Windows
-	// è il guest. 
+	// Tutto il codice eseguito da questo momento in poi da questo
+	// processore (anche quello che verrà eseguito una volta usciti
+	// dal modulo del driver corrente) è codice guest in VMX non-root 
+	// operation. In altre parole, l'intero sistema operativo Windows 
+	// è il guest.
 	//
 
 	// Ristabilisce IRQL e maschera.

@@ -1,7 +1,9 @@
 #pragma once
 
+
 #define POOLTAG             0x56542d78 // VT-x
 #define VMM_STACK_SIZE      0x5000     // Kernel stack è 16 o 20 KB
+
 
 #define VMCALL_TEST						0x1			// Testa VMCALL
 #define VMCALL_VMXOFF					0x2			// Usa VMCALL per eseguire VMXOFF
@@ -9,7 +11,7 @@
 
 // Se si esegue VMXOFF in root operation poi non si può più usare VMRESUME
 // per riprendere l'esecuzione del codice da dove era stato interrotto
-// (non si è più in VMX operartion). Per tale motivo è necessario avere
+// (non si è più in VMX operation). Per tale motivo è necessario avere
 // tutte le informazioni necessarie per riprendere la normale esecuzione
 // del codice nel punto in cui era stata interrotta dalla VM exit che
 // ha portato all'esecuzione di VMXOFF.
@@ -21,13 +23,14 @@ typedef struct _VMXOFF_STATE
 
 } VMXOFF_STATE, * PVMXOFF_STATE;
 
+
 // Risorse allocate nella virtualizzazione di ogni processore logico.
-// Contiene anche lo stato del guest al momento della vmcall che
+// Contiene anche lo stato del guest al momento della VMCALL che
 // porta all'uscita dalla VMX operation con VMXOFF.
 // Quest'ultima info serve perché VMXOFF è eseguita a seguito
-// di una vmcall, che causa una VM exit. Dopo VMXOFF si è fuori da
+// di una VMCALL, che causa una VM exit: dopo VMXOFF si è fuori dalla
 // VMX operation e non si può usare VMRESUME per riprendere ad
-// eseguire del codice. Per tale motico è necessario salvare l'indirizzo
+// eseguire del codice. Per tale motivo è necessario salvare l'indirizzo
 // di ritorno e lo stack pointer per riprendere dall'istruzione
 // successiva alla vmcall che ha portato ad eseguire VMXOFF.
 typedef struct _VCPU
@@ -43,6 +46,7 @@ typedef struct _VCPU
 	BOOLEAN IsOnVmxRootMode;		// Indica se il processore è in VMX root operation o meno
 	BOOLEAN IncrementRip;			// Indica se eseguire l'istruzione guest successiva o ripetere la stessa dopo VMRESUME
 }VCPU, * PVCPU;
+
 
 // Variabile globale che punterà ad un array di VCPU.
 // Dichiarata esterna così da evitare di inserire una definizione

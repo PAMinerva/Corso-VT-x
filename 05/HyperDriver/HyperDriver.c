@@ -36,7 +36,7 @@ NTSTATUS DriverClose(PDEVICE_OBJECT DeviceObject, PIRP Irp)
 
 	UINT64 ProcessorCount = KeQueryActiveProcessorCountEx(ALL_PROCESSOR_GROUPS);
 
-	// Esce da VMX operation
+	// Esce dalla VMX operation
 	TerminateVmx(ProcessorCount);
 
 	Irp->IoStatus.Status = STATUS_SUCCESS;

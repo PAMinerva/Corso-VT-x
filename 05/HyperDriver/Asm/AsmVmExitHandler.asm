@@ -16,8 +16,8 @@ AsmVmExitHandler PROC
     ; all'istruzione successiva a VMCALL in AsmVmxNonRootVmcall, quando
     ; tale funzione è invocata per terminare la VMX operation. In altre
     ; parole è un modo per permettere al sistema operativo di continuare 
-    ; ad eseguire il suo codice anche se non è più guest. In pratica è
-    ; una stessa situazione molto simile a quella che si aveva all'inizio
+    ; ad eseguire il suo codice anche se non è più guest. A pensarci bene
+    ; è una situazione molto simile a quella che si aveva all'inizio
     ; (quando si voleva continuare ad eseguire il codice dell'OS una volta
     ; che questo fosse diventato guest) ma in senso opposto.
     push 0 
@@ -120,17 +120,17 @@ AsmVmExitHandler ENDP
 AsmVmxoffHandler PROC
     
     ; Shadow space 
-    ; (20h e non 28h perhé AsmVmxoffHandler non è invocato con call ma con jump quindi
+    ; (20h e non 28h perché AsmVmxoffHandler non è invocato con call ma con jump quindi
     ; non viene inserito un indirizzo di ritorno sullo stack che lo disallinea)
     sub rsp, 020h
 
     ; Ritorna in RAX il valore di RSP al momento della VMCALL che ha causato la VM exit
-    ; che ha portato ad eseguire VMXOFF: in questo caso quella in AsmVmxVmcall.
+    ; che ha portato ad eseguire VMXOFF: in questo caso quella in AsmVmxNonRootVmcall.
     call ReturnRSPForVmxoff
 
     add rsp, 020h       ; rimuove shadow space
 
-    ; Salva valore ritornato da HvReturnStackPointerForVmxoff in spazio creato da push 0
+    ; Salva il valore ritornato da ReturnRSPForVmxoff in spazio creato da push 0
     ; all'inizio di AsmVMExitHandler.
     ; In questo momento RSP punta a RAX pushato in AsmVMExitHandler. Ci sono 17 push
     ; da push rax a push 0: 
@@ -140,38 +140,39 @@ AsmVmxoffHandler PROC
 
     ; Mette in RAX il valore di RIP al momento della VMCALL che ha causato la VM exit
     ; che ha portato ad eseguire VMXOFF, aggiornato opportunamente per puntare
-    ; all'istruzione successiva: pop r11 in AsmVmxVmcall.
+    ; all'istruzione successiva: pop r11 in AsmVmxNonRootVmcall.
     sub rsp, 020h
     call ReturnRIPForVmxoff
     add rsp, 020h
 
-    ; Salva in RDX il valore di RSP corrente, che punta a valore di RAX pushato con 
-    ; push rax in AsmVMExitHandler
+    ; Salva in RDX il valore di RSP corrente, che punta a valore di RAX pushato
+    ; in AsmVmExitHandler
     mov rdx, rsp
 
-    ; Salva in RBP il valore ritornato da HvReturnStackPointerForVmxoff
+    ; Salva in RBP il valore ritornato da ReturnRSPForVmxoff
     mov rbx, [rsp+088h]
 
     ; Ora RSP corrente punta a ciò che puntava al momento della VMCALL 
     ; che ha causato la VM exit che ha portato ad eseguire VMXOFF.
     mov rsp, rbx
 
-    ; Mette l'indirizzo di pop r11 (che si trova in AsmVmxVmcall) su 
-    ; stack usato da lguest al momento della VM exit.
+    ; Mette l'indirizzo di pop r11 (che si trova in AsmVmxNonRootVmcall) su 
+    ; stack usato dal guest al momento della VM exit.
     push rax
 
     ; Ripristina RSP, che punta nuovamente a valore di RAX pushato 
-    ; con push rax
+    ; in AsmVmExitHandler
     mov rsp, rdx
           
-    ; Il valore ritornato da HvReturnStackPointerForVmxoff è RSP al
-    ; momento della VM exit che ha causato la VM exit che ha portato 
-    ; ad eseguire VMXOFF. Su tale stack, però, ora è stato aggiunto
+    ; Il valore ritornato da ReturnRSPForVmxoff è RSP al momento
+    ; della VM exit che ha causato la VM exit che ha portato ad
+    ; eseguire VMXOFF. Su tale stack, però, ora è stato aggiunto
     ; l'indirizzo di ritorno a pop r11. Quindi bisogna aggiornare
-    ; lo stack pointer per farlo puntare a tale valore.
-    ; E' questo il motivo per cui prima si è salvato lo stack pointer in RBX, 
-    ; che punta ancora al valore ritornato da HvReturnStackPointerForVmxoff 
-    ; e può quindi essere sottratto di 8.
+    ; lo stack pointer del guest per farlo puntare a tale valore.
+    ; Ma RSP punta a RAX pushato in AsmVmExitHandler.
+    ; E' questo il motivo per cui prima si è salvato lo stack pointer 
+    ; in RBX, che punta ancora al valore ritornato da ReturnRSPForVmxoff 
+    ; e che quindi può essere sottratto di 8.
     sub rbx, 08h
 
     ; Salva lo stack pointer aggiornato nello spazio creato da push 0
@@ -202,8 +203,8 @@ AsmVmxoffHandler PROC
     popfq
 
     ; Ora in cima allo stack c'è l'indirizzo di ritorno a
-    ; pop r11 in AsmVmxVmcall. Mettendolo in RSP ed eseguendo
-    ; ret si ritorna proprio a tale istruzione.
+    ; pop r11 in AsmVmxNonRootVmcall. Mettendolo in RSP ed
+    ; eseguento il ret si ritorna proprio a tale istruzione.
 	pop		rsp
 	ret
 

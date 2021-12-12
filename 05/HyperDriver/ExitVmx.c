@@ -19,12 +19,13 @@ VOID TerminateVmx(UINT64 LogicalProcessors)
 		Affinity.Mask = (KAFFINITY)((ULONG64)1 << ProcessorNumber.Number);
 		KeSetSystemGroupAffinityThread(&Affinity, &OldAffinity);
 
-		// Execute Vmcall to to turn off vmx from Vmx root mode
+		// Esegue VMCALL per segnalare all'hypervisor di usare VMXOFF
+		// per uscire dalla VMX operation.
 		Status = AsmVmxNonRootVmcall(VMCALL_VMXOFF, 0, 0, 0);
 
 		if (Status == STATUS_SUCCESS)
 		{
-			KdPrint(("VMX Terminated on logical core %d\n", i));
+			KdPrint(("[*] VMX Terminated on logical core %d\n", i));
 
 			if (GuestState && GuestState[i].VMXON_REGION_VA)
 				MmFreeContiguousMemory((PUINT64)GuestState[i].VMXON_REGION_VA);

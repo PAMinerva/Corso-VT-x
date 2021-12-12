@@ -158,7 +158,7 @@ BOOLEAN VmxRootVmExitHandler(PGUEST_REGS GuestRegs)
 			// Controlla se è stata una delle nostre funzioni (quelle contenute nel
 			// driver che implementa l'hypervisor e che vengono eseguite in non-root 
 			// operation in quanto ora l'intero sistema è il guest) ad eseguire la 
-			// VMCALL oppure se è stato qualcun'altro che intendeva rivolgersi ad Hyper-V.
+			// VMCALL oppure se è stato qualcun altro che intendeva rivolgersi ad Hyper-V.
 			// Nota che, a prescindere dalla funzione invocata, il valore di ritorno
 			// viene caricato nel registro RAX del guest, in modo che questo lo possa 
 			// vedere una volta tornati in non-root operation.
@@ -236,7 +236,8 @@ VOID VmxRootVmresume()
 
 NTSTATUS VmxRootVmCallTest(UINT64 Param1, UINT64 Param2, UINT64 Param3)
 {
-	KdPrint(("VmcallTest called with @Param1 = 0x%llx , @Param2 = 0x%llx , @Param3 = 0x%llx\n", Param1, Param2, Param3));
+	KdPrint(("VmcallTest called with @Param1 = 0x%llx , @Param2 = 0x%llx , @Param3 = 0x%llx\n", 
+		Param1, Param2, Param3));
 	return STATUS_SUCCESS;
 }
 

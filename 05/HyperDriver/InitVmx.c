@@ -8,7 +8,6 @@
 
 
 
-// Inizializza VMX, VMCS e lancia il guest
 BOOLEAN InitializeVmx(UINT64 LogicalProcessors)
 {
 	// Controlla se è possibile entrare in VMX Operation
@@ -21,12 +20,13 @@ BOOLEAN InitializeVmx(UINT64 LogicalProcessors)
 	// Per ogni processore...
 	for (ULONG ProcessorID = 0; ProcessorID < LogicalProcessors; ProcessorID++)
 	{
-		// ...salva lo stato in questo punto in modo da recuperarlo
-		// dopo essere entrati in VMX operation ed aver lanciato il
-		// guest. Impostando opportunamente la VMCS si farà in modo
-		// che il guest cominci ad eseguire il suo codice proprio da
-		// qui, riprendendo da quando non si era ancora in VMX operation.
-		// E' un po' come si il thread fosse stato temporaneamente deviato 
+		// ...salva lo stato in un punto all'interno della seguente
+		// funzione in modo da recuperarlo al lancio del guest, dopo 
+		// essere entrati in VMX operation.
+		// Impostando opportunamente la VMCS si farà in modo che il
+		// guest cominci ad eseguire il suo codice proprio da tale punto,
+		// riprendendo da quando non si era ancora in VMX operation.
+		// E' un po' come se il thread fosse stato temporaneamente dirottato 
 		// per lanciare il guest e questo cominciasse ad eseguire il codice
 		// riprendendo dal punto di deviazione, come se niente in realtà 
 		// fosse successo. L'effetto finale è molto interessante in quanto, 
@@ -45,6 +45,7 @@ BOOLEAN InitializeVmx(UINT64 LogicalProcessors)
 		return FALSE;
 	}
 }
+
 
 BOOLEAN VirtualizeCurrentCpu(ULONG ProcessorID, PVOID GuestStack)
 {
@@ -106,6 +107,7 @@ BOOLEAN VirtualizeCurrentCpu(ULONG ProcessorID, PVOID GuestStack)
 
 	return TRUE;
 }
+
 
 BOOLEAN AllocateVmmStack(UINT64 ProcessorID)
 {
