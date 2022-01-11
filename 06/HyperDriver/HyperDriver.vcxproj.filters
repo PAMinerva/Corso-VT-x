@@ -1,0 +1,145 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="Source Files">
+      <UniqueIdentifier>{4FC737F1-C7A5-4376-A066-2A32D752A2FF}</UniqueIdentifier>
+      <Extensions>cpp;c;cc;cxx;def;odl;idl;hpj;bat;asm;asmx</Extensions>
+    </Filter>
+    <Filter Include="Resource Files">
+      <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
+      <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
+    </Filter>
+    <Filter Include="Driver Files">
+      <UniqueIdentifier>{8E41214B-6785-4CFE-B992-037D68949A14}</UniqueIdentifier>
+      <Extensions>inf;inv;inx;mof;mc;</Extensions>
+    </Filter>
+    <Filter Include="Asm">
+      <UniqueIdentifier>{c7496fc5-1fa5-42c7-a350-a29e8c744d82}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Cpu">
+      <UniqueIdentifier>{d959a753-f33e-469f-aec4-82f0c752e892}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Cpu\inc">
+      <UniqueIdentifier>{e802ae27-d803-461e-a664-7db91867694b}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Cpu\src">
+      <UniqueIdentifier>{93c54213-7d9b-4a34-a821-d3ecba935d31}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Support">
+      <UniqueIdentifier>{d3e0d09c-24ee-42f5-a080-51f4edb134ab}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Support\inc">
+      <UniqueIdentifier>{ad8a4374-f223-4a28-9159-08507d52a50a}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Support\src">
+      <UniqueIdentifier>{4de259b3-8433-46e1-819c-a1f31d30e365}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Vmx">
+      <UniqueIdentifier>{2d8908fc-2740-46a6-9c42-c7e153fc3613}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Vmx\inc">
+      <UniqueIdentifier>{d4a01ab5-5ff2-454f-be4c-66ef7f633a34}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Vmx\src">
+      <UniqueIdentifier>{8e4deccb-356c-4152-8d01-a42f4e5da155}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Logging">
+      <UniqueIdentifier>{f8094018-c2d4-4e9e-aa21-521c984bbc34}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Logging\inc">
+      <UniqueIdentifier>{95eba117-8d26-4477-a3a3-e9f41b12582d}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Logging\src">
+      <UniqueIdentifier>{739eb4f5-42a9-4655-b09e-13376dd23a46}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <Inf Include="HyperDriver.inf">
+      <Filter>Driver Files</Filter>
+    </Inf>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="HyperDriver.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Cpu\Cpu.c">
+      <Filter>Cpu\src</Filter>
+    </ClCompile>
+    <ClCompile Include="Support\NTApi.c">
+      <Filter>Support\src</Filter>
+    </ClCompile>
+    <ClCompile Include="Vmx\ExitVmx.c">
+      <Filter>Vmx\src</Filter>
+    </ClCompile>
+    <ClCompile Include="Vmx\InitVmx.c">
+      <Filter>Vmx\src</Filter>
+    </ClCompile>
+    <ClCompile Include="Vmx\Vmcs.c">
+      <Filter>Vmx\src</Filter>
+    </ClCompile>
+    <ClCompile Include="Vmx\VmExitHandlers.c">
+      <Filter>Vmx\src</Filter>
+    </ClCompile>
+    <ClCompile Include="Vmx\VmxRoot.c">
+      <Filter>Vmx\src</Filter>
+    </ClCompile>
+    <ClCompile Include="Logging\Logging.c">
+      <Filter>Logging\src</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="Asm\AsmOperations.h">
+      <Filter>Asm</Filter>
+    </ClInclude>
+    <ClInclude Include="Asm\VmIntrinsics.h">
+      <Filter>Asm</Filter>
+    </ClInclude>
+    <ClInclude Include="Cpu\Cpu.h">
+      <Filter>Cpu\inc</Filter>
+    </ClInclude>
+    <ClInclude Include="Cpu\Msr.h">
+      <Filter>Cpu\inc</Filter>
+    </ClInclude>
+    <ClInclude Include="Cpu\Segment.h">
+      <Filter>Cpu\inc</Filter>
+    </ClInclude>
+    <ClInclude Include="Support\Globals.h">
+      <Filter>Support\inc</Filter>
+    </ClInclude>
+    <ClInclude Include="Support\NTApi.h">
+      <Filter>Support\inc</Filter>
+    </ClInclude>
+    <ClInclude Include="Vmx\ExitVmx.h">
+      <Filter>Vmx\inc</Filter>
+    </ClInclude>
+    <ClInclude Include="Vmx\InitVmx.h">
+      <Filter>Vmx\inc</Filter>
+    </ClInclude>
+    <ClInclude Include="Vmx\Vmcs.h">
+      <Filter>Vmx\inc</Filter>
+    </ClInclude>
+    <ClInclude Include="Vmx\VmExitHandlers.h">
+      <Filter>Vmx\inc</Filter>
+    </ClInclude>
+    <ClInclude Include="Vmx\VmxRoot.h">
+      <Filter>Vmx\inc</Filter>
+    </ClInclude>
+    <ClInclude Include="Logging\Defs.h">
+      <Filter>Logging\inc</Filter>
+    </ClInclude>
+    <ClInclude Include="Logging\Logging.h">
+      <Filter>Logging\inc</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <MASM Include="Asm\AsmOperations.asm">
+      <Filter>Asm</Filter>
+    </MASM>
+    <MASM Include="Asm\AsmVmIntrinsics.asm">
+      <Filter>Asm</Filter>
+    </MASM>
+    <MASM Include="Asm\AsmVmExitHandler.asm">
+      <Filter>Asm</Filter>
+    </MASM>
+  </ItemGroup>
+</Project>
